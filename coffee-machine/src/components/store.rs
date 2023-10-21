@@ -33,30 +33,35 @@ impl Display for Store{
     }
 }
 
+const MAX_WATER: usize = 10000;
+const MAX_MILK: usize = 10000;
+const MAX_BEANS: usize = 1000;
+const MAX_CUPS: usize = 100;
+
 impl Store{
     pub fn fill_water(&mut self, count: usize) -> Result<(), StoreError>{
-        if self.water + count > 10000{
+        if self.water + count > MAX_WATER{
             return Err(StoreError::IncorrectFill(Ingredient::Water));
         }
         self.water += count;
         Ok(())
     }
     pub fn fill_milk(&mut self, count: usize) -> Result<(), StoreError>{
-        if self.milk + count > 10000{
+        if self.milk + count > MAX_MILK{
             return Err(StoreError::IncorrectFill(Ingredient::Milk));
         }
         self.milk += count;
         Ok(())
     }
     pub fn fill_beans(&mut self, count: usize) -> Result<(), StoreError>{
-        if self.beans + count > 1000{
+        if self.beans + count > MAX_BEANS{
             return Err(StoreError::IncorrectFill(Ingredient::Beans));
         }
         self.beans += count;
         Ok(())
     }
     pub fn fill_cups(&mut self, count: usize) -> Result<(), StoreError>{
-        if self.cups + count > 100{
+        if self.cups + count > MAX_CUPS{
             return Err(StoreError::IncorrectFill(Ingredient::Cups));
         }
         self.cups += count;
