@@ -1,4 +1,4 @@
-use std::io::{Error, ErrorKind, Write};
+use std::{io::{Error, ErrorKind, Write}, str::FromStr};
 use super::*;
 
 
@@ -9,37 +9,66 @@ pub struct CoffeeMachine {
 }
 
 impl CoffeeMachine {
-    pub fn new() -> CoffeeMachine {
-        let mut coffees: Vec<Coffee> = Vec::<Coffee>::with_capacity(3);
-        coffees.push(Coffee::new("Espresso".to_owned(), 250, 0, 16, 1, 4));
-        coffees.push(Coffee::new("Latte".to_owned(), 350, 75, 20, 1, 7));
-        coffees.push(Coffee::new("Cappuccino".to_owned(), 200, 100, 12, 1, 6));
-        CoffeeMachine {
+    pub fn new() -> std::io::Result<CoffeeMachine> {
+        let coffees_strings = include_str!("coffees.csv").lines().map(|x| x.trim().to_owned()).collect::<Vec<String>>();
+        let coffees = CoffeeMachine::parse_coffees(coffees_strings)?;
+        Ok(CoffeeMachine {
             state: MachineState::MainMenu,
             coffees,
             store: Store::default()
-        }
+        })
     }
+
+    fn parse_coffees(lines: Vec<String>) -> Result<Vec<Coffee>, Error>{
+        let mut coffees = Vec::with_capacity(lines.len());
+        for line in lines {
+            let mut splitted = line.split(',').map(|str| str.trim());
+            let coffee_name: String = CoffeeMachine::validate_element(splitted.next())?;
+            let coffee_water: usize = CoffeeMachine::validate_element(splitted.next())?;
+            let coffee_milk: usize = CoffeeMachine::validate_element(splitted.next())?;
+            let coffee_beans: usize = CoffeeMachine::validate_element(splitted.next())?;
+            let coffee_cups: usize = CoffeeMachine::validate_element(splitted.next())?;
+            let coffee_price: usize = CoffeeMachine::validate_element(splitted.next())?;
+            coffees.push(Coffee::new(coffee_name, coffee_water, coffee_milk, coffee_beans, coffee_cups, coffee_price));
+        }
+        Ok(coffees)
+    }
+
+    fn validate_element<T>(element: Option<&str>) -> std::io::Result<T>
+    where T: FromStr{
+        let result = match element {
+            Some(val) => val,
+            None => Err(Error::new(ErrorKind::InvalidInput, "Empty element"))?
+        };
+
+        let parsed = match T::from_str(result) {
+            Ok(val) => val,
+            Err(_) => Err(Error::new(ErrorKind::InvalidInput, "Incorrect input"))?
+        };
+        Ok(parsed)
+    }
+
     pub fn print_interface(&self) -> std::io::Result<()> {
         let mut stdout = std::io::stdout().lock();
         match self.state {
             MachineState::MainMenu => print!("Write action (buy, fill, take, remaining, exit): "),
             MachineState::BuyMenu => {
-                let mut text = "Choose coffee: ".to_owned();
+                let mut text = String::new();
                 for i in 0..self.coffees.len() {
                     text += &format!("{} - {} ", i + 1, self.coffees[i].name);
                 }
-                print!("{}: ", text);
+                print!("Choose coffee: {} :", text);
             }
             MachineState::FillWater => print!("Input water in millilitres (10000 max): "),
             MachineState::FillMilk => print!("Input milk in millilitres (10000 max): "),
             MachineState::FillBeans => print!("Input beans in milligrams (1000 max): "),
             MachineState::FillCups => print!("Input cups count (100 max): "),
-            MachineState::Exit => println!("Goodbye!")
+            MachineState::Exit => print!("Goodbye!")
         }
         stdout.flush()?;
         Ok(())
     }
+
     pub fn input_handler(&mut self, input: &str) -> std::io::Result<()> {
         let processed_input = input.trim().to_ascii_lowercase();
         match self.state {
@@ -93,6 +122,7 @@ impl CoffeeMachine {
         }
         Ok(())
     }
+
     fn take(&mut self) {
         println!("I give you {}$", self.store.take_money());
     }
@@ -100,6 +130,7 @@ impl CoffeeMachine {
     fn remaining(&self) {
         println!("{}", self.store)
     }
+
     fn fill(&mut self, count: usize) -> Result<(), Error> {
         let result = match self.state {
             MachineState::FillWater => {
@@ -118,18 +149,19 @@ impl CoffeeMachine {
         };
         match result {
             Ok(_) => {
-                match self.state {
-                    MachineState::FillWater => self.state = MachineState::FillMilk,
-                    MachineState::FillMilk => self.state = MachineState::FillBeans,
-                    MachineState::FillBeans => self.state = MachineState::FillCups,
-                    MachineState::FillCups => self.state = MachineState::MainMenu,
-                    _ => {}
+                self.state = match self.state {
+                    MachineState::FillWater => MachineState::FillMilk,
+                    MachineState::FillMilk => MachineState::FillBeans,
+                    MachineState::FillBeans => MachineState::FillCups,
+                    MachineState::FillCups => MachineState::MainMenu,
+                    _ => return Err(Error::new(ErrorKind::InvalidInput, "Incorrect state"))
                 }
             }
             Err(err) => eprintln!("{}", err),
         }
         Ok(())
     }
+
     fn make_coffee(&mut self, coffee_index: usize) -> Result<(), StoreError> {
         let coffee = &self.coffees[coffee_index];
         self.store.process_purchase(&coffee)?;

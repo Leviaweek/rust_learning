@@ -4,7 +4,7 @@ use std::io::BufRead;
 use components::*;
 
 fn main() -> std::io::Result<()>{
-    let mut machine = CoffeeMachine::new();
+    let mut machine = CoffeeMachine::new()?;
     let mut stdin = std::io::stdin().lock();
     loop {
         machine.print_interface()?;

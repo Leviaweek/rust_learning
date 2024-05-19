@@ -108,15 +108,8 @@ impl Display for StoreError{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             StoreError::NotEnoughIngredient(ingredients) =>{ 
-                let mut text = "Not enough ".to_owned();
-                for i in 0..ingredients.len(){
-                    if i == ingredients.len() - 1{
-                        text.push_str(&format!("{}.", ingredients[i]));
-                        break;
-                    }
-                    text.push_str(&format!("{}, ", ingredients[i]));
-                }
-                write!(f, "{}", text)?;
+                let text = &ingredients.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", ");
+                write!(f, "Not enough {}", text)?;
             }
             StoreError::IncorrectFill(ingredient) => write!(f, "Too much {}", ingredient)?
         }
@@ -138,6 +131,5 @@ pub enum Ingredient{
     #[strum(serialize = "money")]
     Money
 }
-
 
 impl std::error::Error for StoreError{}
